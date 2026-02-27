@@ -177,16 +177,24 @@ if user_input:
 @st.cache_data(ttl=0)
 def load_data(ticker):
     try:
-        df = yf.download(ticker, period="1y", progress=False)
+        # 🔹 Try 1: yfinance download
+        df = yf.download(ticker, period="1y", interval="1d", progress=False)
 
+        # 🔹 Try 2: history fallback
         if df is None or df.empty:
-            ticker_obj = yf.Ticker(ticker)
-            df = ticker_obj.history(period="1y")
+            stock = yf.Ticker(ticker)
+            df = stock.history(period="1y")
 
+        # 🔹 Try 3: force refresh
         if df is None or df.empty:
-            st.error("⚠️ Yahoo Finance not responding")
+            df = yf.download(ticker, period="6mo", interval="1d", progress=False)
+
+        # ❌ still empty
+        if df is None or df.empty:
+            st.error("❌ Unable to fetch stock data (check internet / try different network)")
             return None
 
+        # ✅ Fix columns
         df.reset_index(inplace=True)
 
         if isinstance(df.columns, pd.MultiIndex):
@@ -200,7 +208,6 @@ def load_data(ticker):
     except Exception as e:
         st.error(f"Data fetch error: {e}")
         return None
-
 
 # ==============================
 # INDICATORS
