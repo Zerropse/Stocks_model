@@ -181,42 +181,36 @@ if user_input:
 # LOAD DATA
 # ==============================
 
-@st.cache_data
+@st.cache_data(ttl=0)
 def load_data(ticker):
     try:
-        df = yf.download(
-            ticker,
-            period="1y",
-            interval="1d",
-            auto_adjust=True,
-            progress=False,
-            threads=False
-        )
+        # Try 1
+        df = yf.download(ticker, period="1y", progress=False)
+
+        # Try 2 (fallback)
+        if df is None or df.empty:
+            ticker_obj = yf.Ticker(ticker)
+            df = ticker_obj.history(period="1y")
+
+        # Try 3 (last fallback)
+        if df is None or df.empty:
+            import pandas_datareader.data as web
+            df = web.DataReader(ticker, 'yahoo')
 
         if df is None or df.empty:
+            st.error("⚠️ Yahoo Finance not responding")
             return None
 
-        # ✅ Flatten columns if MultiIndex
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        # ✅ Standardize column names (VERY IMPORTANT)
+        df.reset_index(inplace=True)
         df.columns = [col.capitalize() for col in df.columns]
 
-        # ✅ Ensure required columns exist
-        required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-        if not all(col in df.columns for col in required_cols):
-            st.error(f"Missing columns: {df.columns}")
-            return None
-
-        df = df[required_cols]
-        df = df.reset_index()
-
-        return df
+        return df[['Date','Open','High','Low','Close','Volume']]
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Data fetch error: {e}")
         return None
+
+
 
 # ==============================
 # INDICATORS
