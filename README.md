@@ -3,6 +3,12 @@
 🚀 A smart stock analysis dashboard built using **Streamlit**, combining technical indicators and real-time data to generate trading insights.
 
 ---
+## 📸 Preview
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/69066b35-db68-4e80-82b4-029f4220e0fb" width="900"/>
+</p>
+---
 
 ## 🔥 Features
 
