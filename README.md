@@ -8,7 +8,6 @@
 <p align="center">
   <img src="https://github.com/user-attachments/assets/69066b35-db68-4e80-82b4-029f4220e0fb" width="900"/>
 </p>
----
 
 ## 🔥 Features
 
