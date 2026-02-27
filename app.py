@@ -174,40 +174,44 @@ if user_input:
 # LOAD DATA (FIXED)
 # ==============================
 
+import requests
+
 @st.cache_data(ttl=0)
 def load_data(ticker):
     try:
-        # 🔹 Try 1: yfinance download
-        df = yf.download(ticker, period="1y", interval="1d", progress=False)
+        API_KEY = "3d0ee00cde4b4dbb8eb5227919868784"
 
-        # 🔹 Try 2: history fallback
-        if df is None or df.empty:
-            stock = yf.Ticker(ticker)
-            df = stock.history(period="1y")
+        url = f"https://api.twelvedata.com/time_series?symbol={ticker}&interval=1day&outputsize=365&apikey={API_KEY}"
 
-        # 🔹 Try 3: force refresh
-        if df is None or df.empty:
-            df = yf.download(ticker, period="6mo", interval="1d", progress=False)
+        response = requests.get(url).json()
 
-        # ❌ still empty
-        if df is None or df.empty:
-            st.error("❌ Unable to fetch stock data (check internet / try different network)")
+        if "values" not in response:
+            st.error("❌ API limit reached or invalid ticker")
             return None
 
-        # ✅ Fix columns
-        df.reset_index(inplace=True)
+        df = pd.DataFrame(response["values"])
+        df.rename(columns={
+            "datetime": "Date",
+            "open": "Open",
+            "high": "High",
+            "low": "Low",
+            "close": "Close",
+            "volume": "Volume"
+        }, inplace=True)
 
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+        df = df[['Date','Open','High','Low','Close','Volume']]
 
-        df.columns = df.columns.astype(str)
-        df.columns = [col.capitalize() for col in df.columns]
+        df["Date"] = pd.to_datetime(df["Date"])
+        df = df.sort_values("Date")
 
-        return df[['Date','Open','High','Low','Close','Volume']]
+        df[['Open','High','Low','Close','Volume']] = df[['Open','High','Low','Close','Volume']].astype(float)
+
+        return df
 
     except Exception as e:
         st.error(f"Data fetch error: {e}")
         return None
+    
 
 # ==============================
 # INDICATORS
