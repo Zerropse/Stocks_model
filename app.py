@@ -16,13 +16,13 @@ st.markdown("""
     font-size: 52px;
     font-weight: 700;
     text-align: center;
-    color: #ffffff;  /* ✅ WHITE TEXT */
-    text-shadow: 0px 0px 12px rgba(255,255,255,0.6); /* 🔥 glow */
+    color: #ffffff;
+    text-shadow: 0px 0px 12px rgba(255,255,255,0.6);
 }
 
 .sub-text {
     text-align: center;
-    color: #ffffff;  /* ✅ WHITE TEXT */
+    color: #ffffff;
     margin-bottom: 20px;
     opacity: 0.85;
 }
@@ -33,7 +33,7 @@ st.markdown("""
     border-radius: 15px;
     text-align: center;
     box-shadow: 0px 0px 12px rgba(255,255,255,0.1);
-    color: white;  /* ✅ IMPORTANT (fixes card text too) */
+    color: white;
 }
 
 hr {
@@ -49,6 +49,19 @@ hr {
 st.markdown("<div class='main-title'>📈 AI Stock Predictor</div>", unsafe_allow_html=True)
 st.markdown("<div class='sub-text'>Built by Kush 🚀 | Smart Market Insights</div>", unsafe_allow_html=True)
 st.markdown("<hr>", unsafe_allow_html=True)
+
+# ==============================
+# ✅ NEW: COMPANY NAME FUNCTION
+# ==============================
+
+@st.cache_data
+def get_company_name(ticker):
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        return info.get("longName") or info.get("shortName") or ticker
+    except:
+        return ticker
 
 # ==============================
 # COMPANY MAP
@@ -128,6 +141,7 @@ brand_map = {
     "fanta": "coca cola","sprite": "coca cola"
 }
 
+
 # ==============================
 # SIDEBAR
 # ==============================
@@ -148,7 +162,20 @@ if user_input:
     else:
         ticker = user_input.upper()
 
-    st.sidebar.success(f"{ticker}")
+    # ✅ NEW FEATURE APPLIED HERE
+    company_name = get_company_name(ticker)
+
+    st.sidebar.markdown(f"""
+    <div style="
+        background-color:#1a1a1a;
+        padding:12px;
+        border-radius:10px;
+        margin-top:10px;
+    ">
+        <div style="color:white; font-weight:600;">🏢 {company_name}</div>
+        <div style="color:gray; font-size:14px;">📊 {ticker}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ==============================
 # LOAD DATA
@@ -157,18 +184,38 @@ if user_input:
 @st.cache_data
 def load_data(ticker):
     try:
-        df = yf.download(ticker, period="1y", progress=False)
+        df = yf.download(
+            ticker,
+            period="1y",
+            interval="1d",
+            auto_adjust=True,
+            progress=False,
+            threads=False
+        )
 
-        if df.empty:
+        if df is None or df.empty:
             return None
 
+        # ✅ Flatten columns if MultiIndex
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        df = df[['Open','High','Low','Close','Volume']]
-        df.reset_index(inplace=True)
+        # ✅ Standardize column names (VERY IMPORTANT)
+        df.columns = [col.capitalize() for col in df.columns]
+
+        # ✅ Ensure required columns exist
+        required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+        if not all(col in df.columns for col in required_cols):
+            st.error(f"Missing columns: {df.columns}")
+            return None
+
+        df = df[required_cols]
+        df = df.reset_index()
+
         return df
-    except:
+
+    except Exception as e:
+        st.error(f"Error: {e}")
         return None
 
 # ==============================
@@ -263,7 +310,11 @@ if ticker:
     df['MACD'], df['MACD_Signal'] = calculate_macd(df)
 
     # ✅ FIXED DROPNA
-    df = df.dropna(subset=['Close'])
+    if 'Close' in df.columns:
+        df = df.dropna(subset=['Close'])
+    else:
+        st.error("❌ 'Close' column missing after processing")
+        st.stop()
 
     # ✅ SAFETY CHECK
     if df.empty:
