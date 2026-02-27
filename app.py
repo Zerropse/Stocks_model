@@ -176,7 +176,7 @@ if user_input:
 
 import requests
 
-@st.cache_data(ttl=0)
+@st.cache_data(ttl=300)
 def load_data(ticker):
     try:
         API_KEY = "3d0ee00cde4b4dbb8eb5227919868784"
@@ -186,7 +186,7 @@ def load_data(ticker):
         response = requests.get(url).json()
 
         if "values" not in response:
-            st.error("❌ API limit reached or invalid ticker")
+            st.error(f"❌ API Error: {response.get('message', 'Unknown issue')}")
             return None
 
         df = pd.DataFrame(response["values"])
