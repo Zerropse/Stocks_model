@@ -141,7 +141,6 @@ brand_map = {
     "fanta": "coca cola","sprite": "coca cola"
 }
 
-
 # ==============================
 # SIDEBAR
 # ==============================
@@ -162,46 +161,38 @@ if user_input:
     else:
         ticker = user_input.upper()
 
-    # ✅ NEW FEATURE APPLIED HERE
     company_name = get_company_name(ticker)
 
     st.sidebar.markdown(f"""
-    <div style="
-        background-color:#1a1a1a;
-        padding:12px;
-        border-radius:10px;
-        margin-top:10px;
-    ">
+    <div style="background-color:#1a1a1a;padding:12px;border-radius:10px;margin-top:10px;">
         <div style="color:white; font-weight:600;">🏢 {company_name}</div>
         <div style="color:gray; font-size:14px;">📊 {ticker}</div>
     </div>
     """, unsafe_allow_html=True)
 
 # ==============================
-# LOAD DATA
+# LOAD DATA (FIXED)
 # ==============================
 
 @st.cache_data(ttl=0)
 def load_data(ticker):
     try:
-        # Try 1
         df = yf.download(ticker, period="1y", progress=False)
 
-        # Try 2 (fallback)
         if df is None or df.empty:
             ticker_obj = yf.Ticker(ticker)
             df = ticker_obj.history(period="1y")
-
-        # Try 3 (last fallback)
-        if df is None or df.empty:
-            import pandas_datareader.data as web
-            df = web.DataReader(ticker, 'yahoo')
 
         if df is None or df.empty:
             st.error("⚠️ Yahoo Finance not responding")
             return None
 
         df.reset_index(inplace=True)
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        df.columns = df.columns.astype(str)
         df.columns = [col.capitalize() for col in df.columns]
 
         return df[['Date','Open','High','Low','Close','Volume']]
@@ -209,7 +200,6 @@ def load_data(ticker):
     except Exception as e:
         st.error(f"Data fetch error: {e}")
         return None
-
 
 
 # ==============================
